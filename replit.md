@@ -15,6 +15,19 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **AI**: Anthropic Claude (via Replit AI Integrations)
+
+## Artifacts
+
+### Daily Defense (mobile)
+- **Kind**: Expo React Native mobile app
+- **Preview path**: `/`
+- **Description**: Catholic apologetics app with common objections and AI-generated answers via Claude
+
+### API Server
+- **Kind**: Express API server
+- **Preview path**: `/api`
+- **Routes**: `/api/anthropic/conversations` (CRUD + SSE streaming)
 
 ## Key Commands
 
@@ -23,5 +36,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
+
+## Key Features
+
+- **Objections Library**: 20+ common Catholic apologetics objections across 6 categories
+- **AI Responses**: Claude Sonnet generates charitable, well-sourced apologetics responses
+- **Streaming**: Responses stream in real-time via Server-Sent Events
+- **Conversation History**: All conversations stored in PostgreSQL, viewable in History tab
+- **Follow-up Chat**: Continue exploring topics with follow-up questions
+
+## Database Tables
+
+- `conversations` — stores conversation title and timestamps
+- `messages` — stores user/assistant messages linked to conversations
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

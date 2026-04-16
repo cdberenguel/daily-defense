@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "8-SendZ38de4HogRkjl3k"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "daily defense app icon"
