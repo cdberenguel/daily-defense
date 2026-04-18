@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { AppProvider } from "@/context/AppContext";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
@@ -28,6 +29,16 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="response" options={{ presentation: "card" }} />
       <Stack.Screen name="chat" options={{ presentation: "card" }} />
+      <Stack.Screen name="topic/[id]" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="apologetics" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="faith-companion" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="tactics" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="opponent" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="bible" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="library" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="generator" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="notes" options={{ presentation: "card", headerShown: false }} />
+      <Stack.Screen name="achievement/[id]" options={{ presentation: "card", headerShown: false }} />
     </Stack>
   );
 }
@@ -51,13 +62,15 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView>
-            <KeyboardProvider>
-              <RootLayoutNav />
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
+        <AppProvider>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView>
+              <KeyboardProvider>
+                <RootLayoutNav />
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </AppProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

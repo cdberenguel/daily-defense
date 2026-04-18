@@ -12,6 +12,7 @@ export interface HealthStatus {
 export interface AnthropicConversation {
   id: number;
   title: string;
+  mode?: string;
   createdAt: string;
 }
 
@@ -25,19 +26,40 @@ export interface AnthropicMessage {
 
 export interface CreateAnthropicConversationBody {
   title: string;
+  mode?: string;
 }
 
 export interface SendAnthropicMessageBody {
   content: string;
+  model?: string;
+  systemPromptOverride?: string;
 }
 
 export interface AnthropicConversationWithMessages {
   id: number;
   title: string;
+  mode?: string;
   createdAt: string;
   messages: AnthropicMessage[];
 }
 
 export interface AnthropicError {
   error: string;
+}
+
+export interface GeneratePrayerBody {
+  situation: string;
+  model?: string;
+}
+
+export interface GenerateTopicBody {
+  objection: string;
+  model?: string;
+}
+
+export interface ReviewSessionBody {
+  transcript: string;
+  opponentType: string;
+  difficulty: string;
+  model?: string;
 }

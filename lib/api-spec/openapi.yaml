@@ -1,6 +1,5 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
   description: API specification
@@ -12,13 +11,14 @@ tags:
     description: Health operations
   - name: anthropic
     description: Anthropic AI chat operations
+  - name: ai
+    description: Standalone AI features
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -141,6 +141,54 @@ paths:
           description: SSE stream of assistant response chunks
           content:
             text/event-stream: {}
+  /ai/pray:
+    post:
+      operationId: generatePrayer
+      tags: [ai]
+      summary: Generate a prayer based on situation (SSE stream)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeneratePrayerBody"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream: {}
+  /ai/generate-topic:
+    post:
+      operationId: generateTopic
+      tags: [ai]
+      summary: Generate a full topic page for any objection (SSE stream)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateTopicBody"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream: {}
+  /ai/review-session:
+    post:
+      operationId: reviewSession
+      tags: [ai]
+      summary: AI review after a practice debate session (SSE stream)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewSessionBody"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream: {}
 components:
   schemas:
     HealthStatus:
@@ -156,6 +204,8 @@ components:
         id:
           type: integer
         title:
+          type: string
+        mode:
           type: string
         createdAt:
           type: string
@@ -189,12 +239,18 @@ components:
       properties:
         title:
           type: string
+        mode:
+          type: string
       required:
         - title
     SendAnthropicMessageBody:
       type: object
       properties:
         content:
+          type: string
+        model:
+          type: string
+        systemPromptOverride:
           type: string
       required:
         - content
@@ -204,6 +260,8 @@ components:
         id:
           type: integer
         title:
+          type: string
+        mode:
           type: string
         createdAt:
           type: string
@@ -224,3 +282,36 @@ components:
           type: string
       required:
         - error
+    GeneratePrayerBody:
+      type: object
+      properties:
+        situation:
+          type: string
+        model:
+          type: string
+      required:
+        - situation
+    GenerateTopicBody:
+      type: object
+      properties:
+        objection:
+          type: string
+        model:
+          type: string
+      required:
+        - objection
+    ReviewSessionBody:
+      type: object
+      properties:
+        transcript:
+          type: string
+        opponentType:
+          type: string
+        difficulty:
+          type: string
+        model:
+          type: string
+      required:
+        - transcript
+        - opponentType
+        - difficulty

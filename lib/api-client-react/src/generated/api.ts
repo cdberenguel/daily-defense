@@ -22,7 +22,10 @@ import type {
   AnthropicError,
   AnthropicMessage,
   CreateAnthropicConversationBody,
+  GeneratePrayerBody,
+  GenerateTopicBody,
   HealthStatus,
+  ReviewSessionBody,
   SendAnthropicMessageBody,
 } from "./api.schemas";
 
@@ -36,7 +39,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -631,4 +633,262 @@ export const useSendAnthropicMessage = <
   TContext
 > => {
   return useMutation(getSendAnthropicMessageMutationOptions(options));
+};
+
+/**
+ * @summary Generate a prayer based on situation (SSE stream)
+ */
+export const getGeneratePrayerUrl = () => {
+  return `/api/ai/pray`;
+};
+
+export const generatePrayer = async (
+  generatePrayerBody: GeneratePrayerBody,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getGeneratePrayerUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generatePrayerBody),
+  });
+};
+
+export const getGeneratePrayerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePrayer>>,
+    TError,
+    { data: BodyType<GeneratePrayerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generatePrayer>>,
+  TError,
+  { data: BodyType<GeneratePrayerBody> },
+  TContext
+> => {
+  const mutationKey = ["generatePrayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generatePrayer>>,
+    { data: BodyType<GeneratePrayerBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generatePrayer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GeneratePrayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generatePrayer>>
+>;
+export type GeneratePrayerMutationBody = BodyType<GeneratePrayerBody>;
+export type GeneratePrayerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate a prayer based on situation (SSE stream)
+ */
+export const useGeneratePrayer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePrayer>>,
+    TError,
+    { data: BodyType<GeneratePrayerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generatePrayer>>,
+  TError,
+  { data: BodyType<GeneratePrayerBody> },
+  TContext
+> => {
+  return useMutation(getGeneratePrayerMutationOptions(options));
+};
+
+/**
+ * @summary Generate a full topic page for any objection (SSE stream)
+ */
+export const getGenerateTopicUrl = () => {
+  return `/api/ai/generate-topic`;
+};
+
+export const generateTopic = async (
+  generateTopicBody: GenerateTopicBody,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getGenerateTopicUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateTopicBody),
+  });
+};
+
+export const getGenerateTopicMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateTopic>>,
+    TError,
+    { data: BodyType<GenerateTopicBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateTopic>>,
+  TError,
+  { data: BodyType<GenerateTopicBody> },
+  TContext
+> => {
+  const mutationKey = ["generateTopic"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateTopic>>,
+    { data: BodyType<GenerateTopicBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateTopic(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateTopicMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateTopic>>
+>;
+export type GenerateTopicMutationBody = BodyType<GenerateTopicBody>;
+export type GenerateTopicMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate a full topic page for any objection (SSE stream)
+ */
+export const useGenerateTopic = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateTopic>>,
+    TError,
+    { data: BodyType<GenerateTopicBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateTopic>>,
+  TError,
+  { data: BodyType<GenerateTopicBody> },
+  TContext
+> => {
+  return useMutation(getGenerateTopicMutationOptions(options));
+};
+
+/**
+ * @summary AI review after a practice debate session (SSE stream)
+ */
+export const getReviewSessionUrl = () => {
+  return `/api/ai/review-session`;
+};
+
+export const reviewSession = async (
+  reviewSessionBody: ReviewSessionBody,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getReviewSessionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reviewSessionBody),
+  });
+};
+
+export const getReviewSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewSession>>,
+    TError,
+    { data: BodyType<ReviewSessionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reviewSession>>,
+  TError,
+  { data: BodyType<ReviewSessionBody> },
+  TContext
+> => {
+  const mutationKey = ["reviewSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reviewSession>>,
+    { data: BodyType<ReviewSessionBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reviewSession(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReviewSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reviewSession>>
+>;
+export type ReviewSessionMutationBody = BodyType<ReviewSessionBody>;
+export type ReviewSessionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary AI review after a practice debate session (SSE stream)
+ */
+export const useReviewSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewSession>>,
+    TError,
+    { data: BodyType<ReviewSessionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reviewSession>>,
+  TError,
+  { data: BodyType<ReviewSessionBody> },
+  TContext
+> => {
+  return useMutation(getReviewSessionMutationOptions(options));
 };

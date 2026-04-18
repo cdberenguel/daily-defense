@@ -2,373 +2,145 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
-  Platform,
+  StyleSheet,
+  TextInput,
+  StatusBar,
 } from "react-native";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 const CATEGORIES = [
-  {
-    id: "scripture",
-    label: "Scripture & Tradition",
-    icon: "book-open" as const,
-  },
-  { id: "papacy", label: "Papacy & Authority", icon: "shield" as const },
-  { id: "mary", label: "Mary & Saints", icon: "star" as const },
-  { id: "sacraments", label: "Sacraments", icon: "droplet" as const },
-  { id: "salvation", label: "Salvation & Works", icon: "heart" as const },
-  { id: "history", label: "Church History", icon: "clock" as const },
+  { id: "all", label: "All", icon: "grid" as const },
+  { id: "Scripture & Tradition", label: "Scripture", icon: "book" as const },
+  { id: "Papacy & Authority", label: "Papacy", icon: "star" as const },
+  { id: "Mary & Saints", label: "Mary", icon: "heart" as const },
+  { id: "Sacraments", label: "Sacraments", icon: "droplet" as const },
+  { id: "Salvation & Works", label: "Salvation", icon: "shield" as const },
+  { id: "Church History", label: "History", icon: "clock" as const },
 ];
 
-const OBJECTIONS: Record<
-  string,
-  { id: string; text: string; category: string }[]
-> = {
-  scripture: [
-    {
-      id: "s1",
-      text: "The Bible alone is the only authority for Christians (Sola Scriptura).",
-      category: "scripture",
-    },
-    {
-      id: "s2",
-      text: "The Catholic Church added books to the Bible.",
-      category: "scripture",
-    },
-    {
-      id: "s3",
-      text: "Catholics worship idols and graven images.",
-      category: "scripture",
-    },
-    {
-      id: "s4",
-      text: "Tradition contradicts Scripture.",
-      category: "scripture",
-    },
-  ],
-  papacy: [
-    {
-      id: "p1",
-      text: "The Pope is not infallible — popes have made mistakes.",
-      category: "papacy",
-    },
-    {
-      id: "p2",
-      text: "Peter was never in Rome.",
-      category: "papacy",
-    },
-    {
-      id: "p3",
-      text: "The papacy is a human invention with no biblical basis.",
-      category: "papacy",
-    },
-    {
-      id: "p4",
-      text: "Catholics believe the Pope is equal to or above God.",
-      category: "papacy",
-    },
-  ],
-  mary: [
-    {
-      id: "m1",
-      text: "Catholics worship Mary.",
-      category: "mary",
-    },
-    {
-      id: "m2",
-      text: "Mary was not sinless — she needed a Savior too (Luke 1:47).",
-      category: "mary",
-    },
-    {
-      id: "m3",
-      text: "Praying to saints is necromancy.",
-      category: "mary",
-    },
-    {
-      id: "m4",
-      text: "Mary had other children after Jesus.",
-      category: "mary",
-    },
-    {
-      id: "m5",
-      text: "The Assumption of Mary is not in the Bible.",
-      category: "mary",
-    },
-  ],
-  sacraments: [
-    {
-      id: "sa1",
-      text: "Confession to a priest is unnecessary — confess directly to God.",
-      category: "sacraments",
-    },
-    {
-      id: "sa2",
-      text: "The Eucharist is just a symbol, not the real body of Christ.",
-      category: "sacraments",
-    },
-    {
-      id: "sa3",
-      text: "Baptism doesn't save — only faith does.",
-      category: "sacraments",
-    },
-    {
-      id: "sa4",
-      text: "The Mass is a re-crucifixion of Christ, which contradicts Hebrews.",
-      category: "sacraments",
-    },
-  ],
-  salvation: [
-    {
-      id: "sv1",
-      text: "Catholics believe you earn salvation by good works.",
-      category: "salvation",
-    },
-    {
-      id: "sv2",
-      text: "Once saved, always saved — you can't lose your salvation.",
-      category: "salvation",
-    },
-    {
-      id: "sv3",
-      text: "Purgatory is unbiblical and a Catholic invention.",
-      category: "salvation",
-    },
-    {
-      id: "sv4",
-      text: "Catholics think non-Catholics go to hell.",
-      category: "salvation",
-    },
-  ],
-  history: [
-    {
-      id: "h1",
-      text: "The Catholic Church created Christianity — the early church was Protestant.",
-      category: "history",
-    },
-    {
-      id: "h2",
-      text: "Constantine invented Catholicism at the Council of Nicaea.",
-      category: "history",
-    },
-    {
-      id: "h3",
-      text: "The Crusades and Inquisition prove the Church is evil.",
-      category: "history",
-    },
-    {
-      id: "h4",
-      text: "The Catholic Church covered up abuse and cannot be trusted.",
-      category: "history",
-    },
-  ],
-};
+const OBJECTIONS = [
+  { id: "s1", title: "Sola Scriptura", subtitle: "Is the Bible the only authority?", category: "Scripture & Tradition", difficulty: "Intermediate", difficultyColor: "#f59e0b" },
+  { id: "s2", title: "Catholics Added Books to the Bible", subtitle: "The Deuterocanonical books controversy", category: "Scripture & Tradition", difficulty: "Intermediate", difficultyColor: "#f59e0b" },
+  { id: "s3", title: "Catholics Worship Idols", subtitle: "Statues, images, and veneration", category: "Scripture & Tradition", difficulty: "Beginner", difficultyColor: "#22c55e" },
+  { id: "p1", title: "Papal Infallibility", subtitle: "Can the Pope be wrong?", category: "Papacy & Authority", difficulty: "Advanced", difficultyColor: "#ef4444" },
+  { id: "m1", title: "Catholics Worship Mary", subtitle: "Veneration vs. worship", category: "Mary & Saints", difficulty: "Beginner", difficultyColor: "#22c55e" },
+  { id: "sa1", title: "Confession to a Priest", subtitle: "Why confess to a man?", category: "Sacraments", difficulty: "Beginner", difficultyColor: "#22c55e" },
+  { id: "sa2", title: "Real Presence in the Eucharist", subtitle: "Is it really Christ's body?", category: "Sacraments", difficulty: "Intermediate", difficultyColor: "#f59e0b" },
+  { id: "sv1", title: "Works vs. Faith for Salvation", subtitle: "Are Catholics trying to earn heaven?", category: "Salvation & Works", difficulty: "Intermediate", difficultyColor: "#f59e0b" },
+  { id: "h1", title: "The Early Church Was Protestant", subtitle: "What did the first Christians believe?", category: "Church History", difficulty: "Advanced", difficultyColor: "#ef4444" },
+];
 
-export default function ObjectionsScreen() {
+export default function TopicsScreen() {
+  const router = useRouter();
   const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const [selectedCategory, setSelectedCategory] = useState("scripture");
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
-  const styles = makeStyles(colors);
-  const objections = OBJECTIONS[selectedCategory] ?? [];
-
-  const handleObjection = (objection: { id: string; text: string; category: string }) => {
-    router.push({
-      pathname: "/response",
-      params: {
-        objectionId: objection.id,
-        objectionText: objection.text,
-        category: objection.category,
-      },
-    });
-  };
+  const filtered = OBJECTIONS.filter((obj) => {
+    const matchSearch = search.trim() === "" || obj.title.toLowerCase().includes(search.toLowerCase()) || obj.subtitle.toLowerCase().includes(search.toLowerCase());
+    const matchCategory = selectedCategory === "all" || obj.category === selectedCategory;
+    return matchSearch && matchCategory;
+  });
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingTop: Platform.OS === "web" ? insets.top + 67 : insets.top,
-        },
-      ]}
-    >
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Daily Defense</Text>
-        <Text style={styles.headerSubtitle}>Catholic Apologetics</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy }} edges={["top"]}>
+      <StatusBar barStyle="light-content" />
+
+      <View style={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4, paddingTop: 8 }}>
+          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.gold, alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+            <Text style={{ color: colors.navy, fontWeight: "900", fontSize: 18 }}>✝</Text>
+          </View>
+          <Text style={{ fontSize: 24, fontWeight: "700", color: "#fff", letterSpacing: 0.5 }}>Daily Defense</Text>
+        </View>
+        <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Catholic Apologetics at Your Fingertips</Text>
+
+        <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}>
+          <Feather name="search" size={16} color="rgba(255,255,255,0.5)" />
+          <TextInput
+            style={{ flex: 1, color: "#fff", fontSize: 15 }}
+            placeholder="Search objections..."
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Feather name="x" size={16} color="rgba(255,255,255,0.5)" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      <FlatList
-        data={CATEGORIES}
-        keyExtractor={(item) => item.id}
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContainer}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.categoryChip,
-              selectedCategory === item.id && styles.categoryChipActive,
-            ]}
-            onPress={() => setSelectedCategory(item.id)}
-            activeOpacity={0.7}
-          >
-            <Feather
-              name={item.icon}
-              size={14}
-              color={
-                selectedCategory === item.id
-                  ? colors.primaryForeground
-                  : colors.mutedForeground
-              }
-            />
-            <Text
-              style={[
-                styles.categoryLabel,
-                selectedCategory === item.id && styles.categoryLabelActive,
-              ]}
+        style={{ maxHeight: 48, marginBottom: 2 }}
+        contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
+      >
+        {CATEGORIES.map((cat) => {
+          const active = selectedCategory === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, marginRight: 8, gap: 5, backgroundColor: active ? colors.gold : "rgba(255,255,255,0.12)" }}
+              onPress={() => setSelectedCategory(cat.id)}
             >
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+              <Feather name={cat.icon} size={13} color={active ? colors.navy : "#fff"} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: active ? colors.navy : "#fff" }}>{cat.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
-      <FlatList
-        data={objections}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.listContainer,
-          {
-            paddingBottom:
-              Platform.OS === "web" ? insets.bottom + 34 + 84 : insets.bottom + 100,
-          },
-        ]}
-        scrollEnabled={objections.length > 0}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.objectionCard}
-            onPress={() => handleObjection(item)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.objectionContent}>
-              <View style={styles.crossIcon}>
-                <Text style={styles.crossText}>✝</Text>
-              </View>
-              <Text style={styles.objectionText}>{item.text}</Text>
+      <View style={{ flex: 1, backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 }}>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.navy }}>Common Objections</Text>
+            <View style={{ backgroundColor: colors.navy, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ fontSize: 12, color: "#fff", fontWeight: "600" }}>{filtered.length}</Text>
             </View>
-            <Feather name="chevron-right" size={18} color={colors.gold} />
-          </TouchableOpacity>
-        )}
-      />
-    </View>
-  );
-}
+          </View>
 
-function makeStyles(colors: ReturnType<typeof useColors>) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    header: {
-      paddingHorizontal: 20,
-      paddingBottom: 16,
-      paddingTop: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      backgroundColor: colors.navy,
-    },
-    headerTitle: {
-      fontSize: 26,
-      fontWeight: "700",
-      color: colors.gold,
-      fontFamily: "Inter_700Bold",
-      letterSpacing: 0.5,
-    },
-    headerSubtitle: {
-      fontSize: 13,
-      color: "rgba(255,255,255,0.7)",
-      fontFamily: "Inter_400Regular",
-      marginTop: 2,
-    },
-    categoriesContainer: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      gap: 8,
-    },
-    categoryChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: colors.parchment,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginRight: 8,
-    },
-    categoryChipActive: {
-      backgroundColor: colors.navy,
-      borderColor: colors.navy,
-    },
-    categoryLabel: {
-      fontSize: 13,
-      fontFamily: "Inter_500Medium",
-      color: colors.mutedForeground,
-    },
-    categoryLabelActive: {
-      color: colors.primaryForeground,
-    },
-    listContainer: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      gap: 10,
-    },
-    objectionCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.card,
-      borderRadius: colors.radius,
-      padding: 16,
-      marginBottom: 4,
-      borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    objectionContent: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 12,
-    },
-    crossIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: colors.navy,
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 1,
-    },
-    crossText: {
-      color: colors.gold,
-      fontSize: 14,
-    },
-    objectionText: {
-      flex: 1,
-      fontSize: 15,
-      fontFamily: "Inter_400Regular",
-      color: colors.foreground,
-      lineHeight: 22,
-    },
-  });
+          {filtered.map((obj) => (
+            <TouchableOpacity
+              key={obj.id}
+              style={{ backgroundColor: "#fff", marginHorizontal: 20, marginBottom: 12, borderRadius: 16, padding: 16, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
+              onPress={() => router.push(`/topic/${obj.id}` as any)}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.navy, flex: 1, marginRight: 8 }}>{obj.title}</Text>
+                <View style={{ borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, backgroundColor: obj.difficultyColor }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{obj.difficulty}</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, marginBottom: 8 }}>{obj.subtitle}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ backgroundColor: colors.parchment, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, color: colors.navy, fontWeight: "600" }}>{obj.category}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.navy} />
+              </View>
+            </TouchableOpacity>
+          ))}
+
+          <TouchableOpacity
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.navy, marginHorizontal: 20, marginTop: 4, marginBottom: 20, borderRadius: 14, padding: 14, justifyContent: "center" }}
+            onPress={() => router.push("/generator" as any)}
+          >
+            <Feather name="zap" size={18} color={colors.gold} />
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Generate Custom Topic with AI</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
 }

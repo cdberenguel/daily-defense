@@ -7,6 +7,17 @@ import { Router } from "express";
 
 const router = Router();
 
+const DEFAULT_SYSTEM = `You are an expert Catholic apologist with deep knowledge of Scripture, Church Fathers, Tradition, and Catholic theology. Your role in the Daily Defense app is to provide clear, charitable, and well-reasoned responses to common objections against the Catholic faith.
+
+When responding:
+- Be charitable and respectful toward those with objections
+- Use Scripture, Tradition, Church Fathers, and reason
+- Be concise but thorough (aim for 200-400 words)
+- Acknowledge what is valid in the objection before answering
+- Cite specific Scripture passages and theological sources when relevant
+- Use language accessible to everyday Catholics who want to defend their faith
+- Format your response clearly with logical flow`;
+
 router.get("/anthropic/conversations", async (req, res) => {
   const convos = await db
     .select()
@@ -16,10 +27,10 @@ router.get("/anthropic/conversations", async (req, res) => {
 });
 
 router.post("/anthropic/conversations", async (req, res) => {
-  const { title } = req.body as { title: string };
+  const { title, mode } = req.body as { title: string; mode?: string };
   const [conversation] = await db
     .insert(conversations)
-    .values({ title })
+    .values({ title, mode: mode ?? "apologetics" })
     .returning();
   res.status(201).json(conversation);
 });
@@ -81,7 +92,11 @@ router.post("/anthropic/conversations/:id/messages", async (req, res) => {
     return;
   }
 
-  const { content } = parsed.data;
+  const { content, model, systemPromptOverride } = parsed.data as {
+    content: string;
+    model?: string;
+    systemPromptOverride?: string;
+  };
 
   const [conversation] = await db
     .select()
@@ -93,11 +108,7 @@ router.post("/anthropic/conversations/:id/messages", async (req, res) => {
     return;
   }
 
-  await db.insert(messages).values({
-    conversationId: id,
-    role: "user",
-    content,
-  });
+  await db.insert(messages).values({ conversationId: id, role: "user", content });
 
   const allMessages = await db
     .select()
@@ -115,39 +126,23 @@ router.post("/anthropic/conversations/:id/messages", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   let fullResponse = "";
+  const chosenModel = model === "deepthink" ? "claude-opus-4-6" : "claude-sonnet-4-6";
 
   const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-6",
+    model: chosenModel,
     max_tokens: 8192,
-    system: `You are an expert Catholic apologist with deep knowledge of Scripture, Church Fathers, Tradition, and Catholic theology. Your role in the Daily Defense app is to provide clear, charitable, and well-reasoned responses to common objections against the Catholic faith.
-
-When responding:
-- Be charitable and respectful toward those with objections
-- Use Scripture, Tradition, Church Fathers, and reason
-- Be concise but thorough (aim for 200-400 words)
-- Acknowledge what is valid in the objection before answering
-- Cite specific Scripture passages and theological sources when relevant
-- Use language accessible to everyday Catholics who want to defend their faith
-- Format your response clearly with logical flow`,
+    system: systemPromptOverride ?? DEFAULT_SYSTEM,
     messages: chatMessages,
   });
 
   for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
-    ) {
+    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
       fullResponse += event.delta.text;
       res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
     }
   }
 
-  await db.insert(messages).values({
-    conversationId: id,
-    role: "assistant",
-    content: fullResponse,
-  });
-
+  await db.insert(messages).values({ conversationId: id, role: "assistant", content: fullResponse });
   res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
   res.end();
 });

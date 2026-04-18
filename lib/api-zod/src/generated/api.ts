@@ -8,7 +8,6 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -21,6 +20,7 @@ export const HealthCheckResponse = zod.object({
 export const ListAnthropicConversationsResponseItem = zod.object({
   id: zod.number(),
   title: zod.string(),
+  mode: zod.string().optional(),
   createdAt: zod.coerce.date(),
 });
 export const ListAnthropicConversationsResponse = zod.array(
@@ -32,6 +32,7 @@ export const ListAnthropicConversationsResponse = zod.array(
  */
 export const CreateAnthropicConversationBody = zod.object({
   title: zod.string(),
+  mode: zod.string().optional(),
 });
 
 /**
@@ -44,6 +45,7 @@ export const GetAnthropicConversationParams = zod.object({
 export const GetAnthropicConversationResponse = zod.object({
   id: zod.number(),
   title: zod.string(),
+  mode: zod.string().optional(),
   createdAt: zod.coerce.date(),
   messages: zod.array(
     zod.object({
@@ -90,4 +92,32 @@ export const SendAnthropicMessageParams = zod.object({
 
 export const SendAnthropicMessageBody = zod.object({
   content: zod.string(),
+  model: zod.string().optional(),
+  systemPromptOverride: zod.string().optional(),
+});
+
+/**
+ * @summary Generate a prayer based on situation (SSE stream)
+ */
+export const GeneratePrayerBody = zod.object({
+  situation: zod.string(),
+  model: zod.string().optional(),
+});
+
+/**
+ * @summary Generate a full topic page for any objection (SSE stream)
+ */
+export const GenerateTopicBody = zod.object({
+  objection: zod.string(),
+  model: zod.string().optional(),
+});
+
+/**
+ * @summary AI review after a practice debate session (SSE stream)
+ */
+export const ReviewSessionBody = zod.object({
+  transcript: zod.string(),
+  opponentType: zod.string(),
+  difficulty: zod.string(),
+  model: zod.string().optional(),
 });

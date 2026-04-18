@@ -13,12 +13,24 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
-        <Label>Objections</Label>
+        <Icon sf={{ default: "shield", selected: "shield.fill" }} />
+        <Label>Topics</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="history">
-        <Icon sf={{ default: "clock", selected: "clock.fill" }} />
-        <Label>History</Label>
+      <NativeTabs.Trigger name="study">
+        <Icon sf={{ default: "book", selected: "book.fill" }} />
+        <Label>Study</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="practice">
+        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
+        <Label>Practice</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="prayer">
+        <Icon sf={{ default: "hands.sparkles", selected: "hands.sparkles.fill" }} />
+        <Label>Prayer</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="profile">
+        <Icon sf={{ default: "person.circle", selected: "person.circle.fill" }} />
+        <Label>Profile</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -53,10 +65,7 @@ function ClassicTabLayout() {
             />
           ) : isWeb ? (
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.navy },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.navy }]}
             />
           ) : null,
       }}
@@ -64,26 +73,66 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Objections",
+          title: "Topics",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="list.bullet" tintColor={color} size={24} />
+              <SymbolView name="shield.fill" tintColor={color} size={24} />
             ) : (
-              <Feather name="list" size={22} color={color} />
+              <Feather name="shield" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="study"
+        options={{
+          title: "Study",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="book.fill" tintColor={color} size={24} />
+            ) : (
+              <Feather name="book-open" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="practice"
+        options={{
+          title: "Practice",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="person.2.fill" tintColor={color} size={24} />
+            ) : (
+              <Feather name="users" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="prayer"
+        options={{
+          title: "Prayer",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="hands.sparkles.fill" tintColor={color} size={24} />
+            ) : (
+              <Feather name="heart" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="person.circle.fill" tintColor={color} size={24} />
+            ) : (
+              <Feather name="user" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
         name="history"
-        options={{
-          title: "History",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="clock" tintColor={color} size={24} />
-            ) : (
-              <Feather name="clock" size={22} color={color} />
-            ),
-        }}
+        options={{ href: null }}
       />
     </Tabs>
   );
