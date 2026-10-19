@@ -50,10 +50,12 @@ const TRADITIONAL_PRAYERS = [
 
 export default function PrayerScreen() {
   const colors = useColors();
-  const { incrementStat, addNote, notes } = useApp();
+  const { incrementStat, addNote, deleteNote, notes } = useApp();
   const [situation, setSituation] = useState("");
   const [generatedPrayer, setGeneratedPrayer] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [removedTraditionalPrayerTitles, setRemovedTraditionalPrayerTitles] =
+    useState<string[]>([]);
   const [selectedTraditionalPrayer, setSelectedTraditionalPrayer] = useState<
     (typeof TRADITIONAL_PRAYERS)[number] | null
   >(null);
@@ -107,13 +109,88 @@ export default function PrayerScreen() {
     }
   };
 
+  const handleDeleteGeneratedPrayer = () => {
+    const prayerText = generatedPrayer.trim();
+    if (!prayerText || isGenerating) return;
+
+    const savedPrayerNote = notes.find(
+      (note) =>
+        note.category === "Prayer" && note.content.trim() === prayerText
+    );
+    Alert.alert(
+      "Delete prayer",
+      savedPrayerNote
+        ? "This will remove the generated prayer from this session and Prayer Notes."
+        : "Remove this generated prayer from the current session?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (savedPrayerNote) await deleteNote(savedPrayerNote.id);
+              setGeneratedPrayer("");
+            } catch {
+              Alert.alert("Delete failed", "The prayer could not be deleted. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteTraditionalPrayer = (
+    prayer: (typeof TRADITIONAL_PRAYERS)[number]
+  ) => {
+    Alert.alert(
+      "Remove prayer",
+      `Hide "${prayer.title}" from this prayer session? This does not delete it from the app.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            setRemovedTraditionalPrayerTitles((previous) =>
+              previous.includes(prayer.title) ? previous : [...previous, prayer.title]
+            );
+            if (selectedTraditionalPrayer?.title === prayer.title) {
+              setSelectedTraditionalPrayer(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy }} edges={["top"]}>
       <StatusBar barStyle="light-content" />
 
       <View style={{ paddingHorizontal: 20, paddingBottom: 20, paddingTop: Platform.OS === "web" ? 67 : 8 }}>
-        <Text style={{ fontSize: 26, fontWeight: "800", color: "#fff", marginBottom: 4 }}>Prayer</Text>
-        <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>Bring your intentions before God</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: "#fff", marginBottom: 4 }}>Prayer</Text>
+            <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>Bring your intentions before God</Text>
+          </View>
+          <TouchableOpacity
+            testID="open-prayer-notes"
+            accessibilityRole="button"
+            accessibilityLabel={`Open Prayer Notes, ${prayerNotesCount} saved`}
+            onPress={() => router.push("/notes?category=Prayer" as any)}
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 14,
+              backgroundColor: "rgba(255,255,255,0.14)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name="book-open" size={23} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={{ flex: 1, backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
@@ -192,53 +269,55 @@ export default function PrayerScreen() {
                     {isGeneratedPrayerSaved ? "Saved" : "Save"}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  testID="delete-generated-prayer"
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete generated prayer"
+                  onPress={handleDeleteGeneratedPrayer}
+                  disabled={isGenerating}
+                  hitSlop={8}
+                  style={{ padding: 7 }}
+                >
+                  <Feather name="trash-2" size={17} color={colors.destructive} />
+                </TouchableOpacity>
               </View>
               <Text style={{ fontSize: 15, color: colors.navy, lineHeight: 24, fontStyle: "italic" }}>{generatedPrayer}</Text>
             </View>
           )}
 
-          <TouchableOpacity
-            testID="open-prayer-notes"
-            accessibilityRole="button"
-            onPress={() => router.push("/notes?category=Prayer" as any)}
-            style={{
-              backgroundColor: colors.secondary,
-              borderRadius: 14,
-              padding: 15,
-              marginBottom: 22,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
-            <Feather name="bookmark" size={18} color={colors.navy} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.navy }}>Prayer Notes</Text>
-              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 3 }}>
-                Saved prayers are available offline
-              </Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.navy }}>{prayerNotesCount}</Text>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
-
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Traditional Prayers</Text>
 
-          {TRADITIONAL_PRAYERS.map((prayer) => (
-            <TouchableOpacity
+          {TRADITIONAL_PRAYERS.filter(
+            (prayer) => !removedTraditionalPrayerTitles.includes(prayer.title)
+          ).map((prayer) => (
+            <View
               key={prayer.title}
-              testID={`traditional-prayer-${prayer.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-              accessibilityRole="button"
-              accessibilityLabel={`Read ${prayer.title}`}
               style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 10, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}
-              onPress={() => setSelectedTraditionalPrayer(prayer)}
-              activeOpacity={0.75}
             >
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.navy }}>{prayer.title}</Text>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <TouchableOpacity
+                  testID={`traditional-prayer-${prayer.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Read ${prayer.title}`}
+                  style={{ flex: 1, flexDirection: "row", justifyContent: "space-between", alignItems: "center", minHeight: 30 }}
+                  onPress={() => setSelectedTraditionalPrayer(prayer)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: colors.navy }}>{prayer.title}</Text>
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID={`delete-traditional-prayer-${prayer.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${prayer.title} from this session`}
+                  onPress={() => handleDeleteTraditionalPrayer(prayer)}
+                  hitSlop={8}
+                  style={{ padding: 6 }}
+                >
+                  <Feather name="trash-2" size={17} color={colors.destructive} />
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           ))}
 
           <View style={{ height: Platform.OS === "web" ? 134 : 100 }} />
@@ -257,6 +336,16 @@ export default function PrayerScreen() {
               <Text style={{ flex: 1, fontSize: 20, fontWeight: "700", color: colors.navy, marginRight: 12 }}>
                 {selectedTraditionalPrayer.title}
               </Text>
+              <TouchableOpacity
+                testID="delete-open-traditional-prayer"
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${selectedTraditionalPrayer.title} from this session`}
+                onPress={() => handleDeleteTraditionalPrayer(selectedTraditionalPrayer)}
+                hitSlop={10}
+                style={{ marginRight: 16 }}
+              >
+                <Feather name="trash-2" size={19} color={colors.destructive} />
+              </TouchableOpacity>
               <TouchableOpacity
                 testID="close-traditional-prayer"
                 accessibilityRole="button"
