@@ -41,78 +41,131 @@ export default function OpponentScreen() {
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [isStarting, setIsStarting] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
   const [review, setReview] = useState("");
+  const [startError, setStartError] = useState("");
+  const [chatError, setChatError] = useState("");
+  const [reviewError, setReviewError] = useState("");
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [showReview, setShowReview] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const baseUrl = getApiBaseUrl();
 
   const startDebate = async () => {
-    if (!opponentType || !difficulty) return;
-    const systemPrompt = OPPONENT_SYSTEMS[opponentType][difficulty];
+    if (!opponentType || !difficulty || isStarting) return;
+    setIsStarting(true);
+    setStartError("");
+    setChatError("");
+    setConversationId(null);
+    setMessages([]);
     const openingLine = opponentType === "Muslim"
       ? "Assalamu alaikum. I have some questions about your Catholic faith that I genuinely struggle with. Can we talk?"
       : opponentType === "Atheist"
       ? "I respect your faith, but I have to be honest — I just don't see the evidence for God. Can you help me understand why you believe?"
       : "I love Jesus too, and I respect Catholics as fellow Christians. But some of your practices really concern me biblically. Can we discuss them?";
 
-    const res = await fetch(`${baseUrl}/api/anthropic/conversations`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: `Practice vs. ${opponentType} (${difficulty})`, mode: "opponent" }),
-    });
-    const data = await res.json();
-    setConversationId(data.id);
-    setMessages([{ role: "assistant", content: openingLine }]);
+    try {
+      if (!baseUrl) throw new Error("The API address is not available.");
+      const res = await fetch(`${baseUrl}/api/anthropic/conversations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `Practice vs. ${opponentType} (${difficulty})`,
+          mode: "opponent",
+        }),
+      });
+      if (!res.ok) throw new Error(`Conversation request failed (${res.status}).`);
+      const data = (await res.json()) as { id?: unknown };
+      if (typeof data.id !== "number" || !Number.isInteger(data.id)) {
+        throw new Error("The conversation service returned an invalid session.");
+      }
+      setConversationId(data.id);
+      setMessages([{ role: "assistant", content: openingLine }]);
+    } catch {
+      setStartError("Could not start the debate. Check your connection and try again.");
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || isStreaming || !conversationId) return;
-    const userMsg = input.trim(); setInput("");
+    const userMsg = input.trim();
+    const activeConversationId = conversationId;
+    if (!userMsg || isStreaming) return;
+    if (!activeConversationId) {
+      setChatError("This debate session is not connected. Go back and start a new debate.");
+      return;
+    }
+
+    setInput("");
+    setChatError("");
     setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
     setIsStreaming(true);
-    let assistantContent = "";
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-    const systemPrompt = OPPONENT_SYSTEMS[opponentType!][difficulty!];
-
-    try {
-      const { fetch: expoFetch } = await import("expo/fetch");
-      const response = await expoFetch(`${baseUrl}/api/anthropic/conversations/${conversationId}/messages`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: userMsg, systemPromptOverride: systemPrompt }),
-      });
-      const reader = response.body!.getReader(); const decoder = new TextDecoder(); let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read(); if (done) break;
-        buffer += decoder.decode(value, { stream: true }); const lines = buffer.split("\n"); buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try { const d = JSON.parse(line.slice(6)); if (d.content) { assistantContent += d.content; setMessages((prev) => { const u = [...prev]; u[u.length - 1] = { role: "assistant", content: assistantContent }; return u; }); scrollRef.current?.scrollToEnd({ animated: false }); } } catch {}
+    await streamFromEndpoint(
+      `${baseUrl}/api/anthropic/conversations/${activeConversationId}/messages`,
+      {
+        content: userMsg,
+        systemPromptOverride: OPPONENT_SYSTEMS[opponentType!][difficulty!],
+      },
+      (chunk) => {
+        setMessages((prev) => {
+          const next = [...prev];
+          const lastIndex = next.length - 1;
+          const lastMessage = next[lastIndex];
+          if (lastMessage?.role === "assistant") {
+            next[lastIndex] = {
+              role: "assistant",
+              content: lastMessage.content + chunk,
+            };
           }
-        }
+          return next;
+        });
+        scrollRef.current?.scrollToEnd({ animated: false });
+      },
+      () => {
+        setIsStreaming(false);
+        scrollRef.current?.scrollToEnd({ animated: true });
+      },
+      () => {
+        setIsStreaming(false);
+        setChatError("The opponent could not respond. Your draft has been restored so you can try again.");
+        setInput((current) => current || userMsg);
+        setMessages((prev) => {
+          const lastMessage = prev[prev.length - 1];
+          return lastMessage?.role === "assistant" && !lastMessage.content
+            ? prev.slice(0, -1)
+            : prev;
+        });
       }
-    } catch {}
-    setIsStreaming(false);
-    scrollRef.current?.scrollToEnd({ animated: true });
+    );
   };
 
   const endAndReview = async () => {
+    if (isReviewing || isStreaming || !messages.some((message) => message.role === "user")) {
+      return;
+    }
     setShowReview(true);
     setIsReviewing(true);
     setReview("");
+    setReviewError("");
     const transcript = messages.map((m) => `${m.role === "user" ? "Catholic Defender" : opponentType}: ${m.content}`).join("\n\n");
     await streamFromEndpoint(
       `${baseUrl}/api/ai/review-session`,
       { transcript, opponentType: opponentType!, difficulty: difficulty! },
       (chunk) => setReview((prev) => prev + chunk),
       () => { setIsReviewing(false); incrementStat("sessionsFinished"); },
-      () => setIsReviewing(false)
+      () => {
+        setIsReviewing(false);
+        setReviewError("The session review could not be loaded. Please try again.");
+      }
     );
   };
 
-  if (!opponentType || !difficulty) {
+  if (!opponentType || !difficulty || !conversationId) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#dc2626" }} edges={["top"]}>
         <StatusBar barStyle="light-content" />
@@ -138,12 +191,21 @@ export default function OpponentScreen() {
                 <Text style={{ fontSize: 17, fontWeight: "700", color: difficulty === d ? "#fff" : "#7f1d1d" }}>{d}</Text>
               </TouchableOpacity>
             ))}
+            {startError ? (
+              <Text accessibilityRole="alert" style={{ color: "#b91c1c", fontSize: 14, marginTop: 8 }}>
+                {startError}
+              </Text>
+            ) : null}
             <TouchableOpacity
               style={{ backgroundColor: opponentType && difficulty ? "#dc2626" : "#fca5a5", borderRadius: 14, padding: 16, alignItems: "center", marginTop: 12 }}
               onPress={startDebate}
-              disabled={!opponentType || !difficulty}
+              disabled={!opponentType || !difficulty || isStarting}
             >
-              <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>Start Debate</Text>
+              {isStarting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>Start Debate</Text>
+              )}
             </TouchableOpacity>
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -157,7 +219,7 @@ export default function OpponentScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: "#dc2626" }} edges={["top"]}>
         <StatusBar barStyle="light-content" />
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12 }}>
-          <TouchableOpacity onPress={() => { setShowReview(false); setOpponentType(null); setDifficulty(null); setMessages([]); setConversationId(null); setReview(""); }} style={{ marginRight: 12 }}>
+          <TouchableOpacity onPress={() => { setShowReview(false); setOpponentType(null); setDifficulty(null); setMessages([]); setConversationId(null); setReview(""); setReviewError(""); }} style={{ marginRight: 12 }}>
             <Feather name="x" size={22} color="#fff" />
           </TouchableOpacity>
           <Text style={{ fontSize: 20, fontWeight: "700", color: "#fff" }}>AI Review</Text>
@@ -165,6 +227,19 @@ export default function OpponentScreen() {
         <View style={{ flex: 1, backgroundColor: "#fff7f7", borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
           <ScrollView contentContainerStyle={{ padding: 20 }}>
             {isReviewing && !review && <ActivityIndicator size="large" color="#dc2626" style={{ marginTop: 40 }} />}
+            {reviewError ? (
+              <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20 }}>
+                <Text accessibilityRole="alert" style={{ fontSize: 14, color: "#991b1b", lineHeight: 22, marginBottom: 14 }}>{reviewError}</Text>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={endAndReview}
+                  disabled={isReviewing}
+                  style={{ alignSelf: "flex-start", backgroundColor: "#dc2626", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 }}
+                >
+                  <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>Try review again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
             {review.length > 0 && (
               <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20 }}>
                 <Text style={{ fontSize: 15, color: "#7f1d1d", lineHeight: 24 }}>{review}</Text>
@@ -181,19 +256,28 @@ export default function OpponentScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#dc2626" }} edges={["top"]}>
       <StatusBar barStyle="light-content" />
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" }}>
-        <TouchableOpacity onPress={() => setOpponentType(null)} style={{ marginRight: 12 }}>
+        <TouchableOpacity onPress={() => { setOpponentType(null); setDifficulty(null); setMessages([]); setConversationId(null); setChatError(""); }} style={{ marginRight: 12 }}>
           <Feather name="arrow-left" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 17, fontWeight: "700", color: "#fff" }}>vs. {opponentType}</Text>
           <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{difficulty} difficulty</Text>
         </View>
-        <TouchableOpacity onPress={endAndReview} style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+        <TouchableOpacity
+          onPress={endAndReview}
+          disabled={isStreaming || isReviewing || !messages.some((message) => message.role === "user")}
+          style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, opacity: isStreaming || !messages.some((message) => message.role === "user") ? 0.5 : 1 }}
+        >
           <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }}>End + Review</Text>
         </TouchableOpacity>
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView ref={scrollRef} style={{ flex: 1, backgroundColor: "#fff7f7" }} contentContainerStyle={{ padding: 16 }} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
+          {chatError ? (
+            <View accessibilityRole="alert" style={{ backgroundColor: "#fee2e2", borderRadius: 12, padding: 12, marginBottom: 14 }}>
+              <Text style={{ color: "#991b1b", fontSize: 13, lineHeight: 19 }}>{chatError}</Text>
+            </View>
+          ) : null}
           {messages.map((msg, i) => (
             <View key={i} style={{ marginBottom: 12, alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
               {msg.role === "assistant" && <Text style={{ fontSize: 12, color: "#991b1b", marginBottom: 4, fontWeight: "600" }}>{opponentType}</Text>}
