@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface Note {
@@ -106,6 +106,8 @@ const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const notesRef = useRef<Note[]>([]);
+  const notesWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const [savedTopics, setSavedTopics] = useState<SavedTopic[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [profile, setProfile] = useState<Profile>(defaultProfile);
@@ -124,7 +126,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.getItem("profile"),
         AsyncStorage.getItem("stats"),
       ]);
-      if (n) setNotes(JSON.parse(n));
+      if (n) {
+        const storedNotes = JSON.parse(n) as Note[];
+        notesRef.current = storedNotes;
+        setNotes(storedNotes);
+      }
       if (t) setSavedTopics(JSON.parse(t));
       if (p) setProfile(JSON.parse(p));
       if (s) setStats(JSON.parse(s));
@@ -142,21 +148,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   };
 
+  const persistNotes = (updated: Note[]) => {
+    const write = notesWriteQueue.current
+      .catch(() => undefined)
+      .then(() => AsyncStorage.setItem("notes", JSON.stringify(updated)));
+    notesWriteQueue.current = write;
+    return write;
+  };
+
   const addNote = async (note: Omit<Note, "id" | "createdAt">) => {
     const newNote: Note = {
       ...note,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
       createdAt: new Date().toISOString(),
     };
-    const updated = [newNote, ...notes];
+    const updated = [newNote, ...notesRef.current];
+    notesRef.current = updated;
     setNotes(updated);
-    await AsyncStorage.setItem("notes", JSON.stringify(updated));
+    await persistNotes(updated);
   };
 
   const deleteNote = async (id: string) => {
-    const updated = notes.filter((n) => n.id !== id);
+    const updated = notesRef.current.filter((n) => n.id !== id);
+    if (updated.length === notesRef.current.length) return;
+    notesRef.current = updated;
     setNotes(updated);
-    await AsyncStorage.setItem("notes", JSON.stringify(updated));
+    await persistNotes(updated);
   };
 
   const saveTopic = async (topic: Omit<SavedTopic, "id" | "savedAt">) => {

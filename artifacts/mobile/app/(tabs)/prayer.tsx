@@ -117,51 +117,23 @@ export default function PrayerScreen() {
       (note) =>
         note.category === "Prayer" && note.content.trim() === prayerText
     );
-    Alert.alert(
-      "Delete prayer",
-      savedPrayerNote
-        ? "This will remove the generated prayer from this session and Prayer Notes."
-        : "Remove this generated prayer from the current session?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              if (savedPrayerNote) await deleteNote(savedPrayerNote.id);
-              setGeneratedPrayer("");
-            } catch {
-              Alert.alert("Delete failed", "The prayer could not be deleted. Please try again.");
-            }
-          },
-        },
-      ]
-    );
+    setGeneratedPrayer("");
+    if (savedPrayerNote) {
+      void deleteNote(savedPrayerNote.id).catch(() => {
+        Alert.alert("Delete failed", "The prayer was removed from this session but could not be removed from Prayer Notes.");
+      });
+    }
   };
 
   const handleDeleteTraditionalPrayer = (
     prayer: (typeof TRADITIONAL_PRAYERS)[number]
   ) => {
-    Alert.alert(
-      "Remove prayer",
-      `Hide "${prayer.title}" from this prayer session? This does not delete it from the app.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            setRemovedTraditionalPrayerTitles((previous) =>
-              previous.includes(prayer.title) ? previous : [...previous, prayer.title]
-            );
-            if (selectedTraditionalPrayer?.title === prayer.title) {
-              setSelectedTraditionalPrayer(null);
-            }
-          },
-        },
-      ]
+    setRemovedTraditionalPrayerTitles((previous) =>
+      previous.includes(prayer.title) ? previous : [...previous, prayer.title]
     );
+    if (selectedTraditionalPrayer?.title === prayer.title) {
+      setSelectedTraditionalPrayer(null);
+    }
   };
 
   return (
@@ -309,7 +281,7 @@ export default function PrayerScreen() {
                 <TouchableOpacity
                   testID={`delete-traditional-prayer-${prayer.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                   accessibilityRole="button"
-                  accessibilityLabel={`Remove ${prayer.title} from this session`}
+                  accessibilityLabel={`Delete ${prayer.title}`}
                   onPress={() => handleDeleteTraditionalPrayer(prayer)}
                   hitSlop={8}
                   style={{ padding: 6 }}
@@ -339,7 +311,7 @@ export default function PrayerScreen() {
               <TouchableOpacity
                 testID="delete-open-traditional-prayer"
                 accessibilityRole="button"
-                accessibilityLabel={`Remove ${selectedTraditionalPrayer.title} from this session`}
+                accessibilityLabel={`Delete ${selectedTraditionalPrayer.title}`}
                 onPress={() => handleDeleteTraditionalPrayer(selectedTraditionalPrayer)}
                 hitSlop={10}
                 style={{ marginRight: 16 }}

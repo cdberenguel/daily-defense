@@ -40,11 +40,10 @@ export default function NotesScreen() {
     setTitle(""); setContent(""); setCategory("General"); setShowModal(false);
   };
 
-  const handleDelete = (id: string, noteTitle: string) => {
-    Alert.alert("Delete Note", `Delete "${noteTitle}"?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteNote(id) },
-    ]);
+  const handleDelete = (id: string) => {
+    void deleteNote(id).catch(() => {
+      Alert.alert("Delete failed", "The note was removed from this list but could not be deleted from offline storage.");
+    });
   };
 
   const CATEGORY_COLORS: Record<string, string> = {
@@ -135,7 +134,13 @@ export default function NotesScreen() {
                   </View>
                   <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a" }}>{note.title}</Text>
                 </View>
-                <TouchableOpacity onPress={() => handleDelete(note.id, note.title)}>
+                <TouchableOpacity
+                  testID={`delete-note-${note.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${note.title}`}
+                  onPress={() => handleDelete(note.id)}
+                  hitSlop={8}
+                >
                   <Feather name="trash-2" size={16} color="#ef4444" />
                 </TouchableOpacity>
               </View>
