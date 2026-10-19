@@ -8,8 +8,11 @@ import {
   ActivityIndicator,
   StatusBar,
   Alert,
+  Modal,
+  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
@@ -47,11 +50,20 @@ const TRADITIONAL_PRAYERS = [
 
 export default function PrayerScreen() {
   const colors = useColors();
-  const { incrementStat } = useApp();
+  const { incrementStat, addNote, notes } = useApp();
   const [situation, setSituation] = useState("");
   const [generatedPrayer, setGeneratedPrayer] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [expandedPrayer, setExpandedPrayer] = useState<string | null>(null);
+  const [selectedTraditionalPrayer, setSelectedTraditionalPrayer] = useState<
+    (typeof TRADITIONAL_PRAYERS)[number] | null
+  >(null);
+  const prayerNotesCount = notes.filter((note) => note.category === "Prayer").length;
+  const isGeneratedPrayerSaved =
+    generatedPrayer.trim().length > 0 &&
+    notes.some(
+      (note) =>
+        note.category === "Prayer" && note.content.trim() === generatedPrayer.trim()
+    );
 
   const handleGenerate = async () => {
     if (!situation.trim()) {
@@ -76,11 +88,30 @@ export default function PrayerScreen() {
     );
   };
 
+  const handleSavePrayer = async () => {
+    const prayerText = generatedPrayer.trim();
+    if (!prayerText || isGenerating || isGeneratedPrayerSaved) return;
+
+    const situationTitle = situation.trim().replace(/\s+/g, " ").slice(0, 48);
+    try {
+      await addNote({
+        title: situationTitle
+          ? `Prayer for ${situationTitle}`
+          : "Personalized Prayer",
+        content: prayerText,
+        category: "Prayer",
+      });
+      Alert.alert("Prayer saved", "You can find it in Prayer Notes and open it offline.");
+    } catch {
+      Alert.alert("Save failed", "Your prayer could not be saved. Please try again.");
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.navy }} edges={["top"]}>
       <StatusBar barStyle="light-content" />
 
-      <View style={{ paddingHorizontal: 20, paddingBottom: 20, paddingTop: 8 }}>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 20, paddingTop: Platform.OS === "web" ? 67 : 8 }}>
         <Text style={{ fontSize: 26, fontWeight: "800", color: "#fff", marginBottom: 4 }}>Prayer</Text>
         <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>Bring your intentions before God</Text>
       </View>
@@ -134,33 +165,117 @@ export default function PrayerScreen() {
 
           {generatedPrayer.length > 0 && (
             <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: colors.gold }}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.navy, marginBottom: 10 }}>Your Personalized Prayer</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10 }}>
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: "700", color: colors.navy }}>Your Personalized Prayer</Text>
+                <TouchableOpacity
+                  testID="save-generated-prayer"
+                  accessibilityRole="button"
+                  accessibilityLabel={isGeneratedPrayerSaved ? "Saved to Prayer Notes" : "Save prayer to Prayer Notes"}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingHorizontal: 11,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    backgroundColor: isGeneratedPrayerSaved ? colors.secondary : colors.navy,
+                  }}
+                  onPress={handleSavePrayer}
+                  disabled={isGenerating || isGeneratedPrayerSaved}
+                >
+                  <Feather
+                    name={isGeneratedPrayerSaved ? "check" : "bookmark"}
+                    size={15}
+                    color={isGeneratedPrayerSaved ? colors.navy : "#fff"}
+                  />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: isGeneratedPrayerSaved ? colors.navy : "#fff" }}>
+                    {isGeneratedPrayerSaved ? "Saved" : "Save"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <Text style={{ fontSize: 15, color: colors.navy, lineHeight: 24, fontStyle: "italic" }}>{generatedPrayer}</Text>
             </View>
           )}
+
+          <TouchableOpacity
+            testID="open-prayer-notes"
+            accessibilityRole="button"
+            onPress={() => router.push("/notes?category=Prayer" as any)}
+            style={{
+              backgroundColor: colors.secondary,
+              borderRadius: 14,
+              padding: 15,
+              marginBottom: 22,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <Feather name="bookmark" size={18} color={colors.navy} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.navy }}>Prayer Notes</Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 3 }}>
+                Saved prayers are available offline
+              </Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.navy }}>{prayerNotesCount}</Text>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
 
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Traditional Prayers</Text>
 
           {TRADITIONAL_PRAYERS.map((prayer) => (
             <TouchableOpacity
               key={prayer.title}
+              testID={`traditional-prayer-${prayer.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+              accessibilityRole="button"
+              accessibilityLabel={`Read ${prayer.title}`}
               style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, marginBottom: 10, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}
-              onPress={() => setExpandedPrayer(expandedPrayer === prayer.title ? null : prayer.title)}
+              onPress={() => setSelectedTraditionalPrayer(prayer)}
               activeOpacity={0.75}
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <Text style={{ fontSize: 16, fontWeight: "700", color: colors.navy }}>{prayer.title}</Text>
-                <Feather name={expandedPrayer === prayer.title ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </View>
-              {expandedPrayer === prayer.title && (
-                <Text style={{ fontSize: 14, color: colors.navy, lineHeight: 22, marginTop: 12, fontStyle: "italic" }}>{prayer.text}</Text>
-              )}
             </TouchableOpacity>
           ))}
 
-          <View style={{ height: 100 }} />
+          <View style={{ height: Platform.OS === "web" ? 134 : 100 }} />
         </ScrollView>
       </View>
+
+      <Modal
+        visible={selectedTraditionalPrayer !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedTraditionalPrayer(null)}
+      >
+        {selectedTraditionalPrayer && (
+          <SafeAreaView style={{ flex: 1, backgroundColor: colors.cream }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: Platform.OS === "web" ? 67 : 12, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ flex: 1, fontSize: 20, fontWeight: "700", color: colors.navy, marginRight: 12 }}>
+                {selectedTraditionalPrayer.title}
+              </Text>
+              <TouchableOpacity
+                testID="close-traditional-prayer"
+                accessibilityRole="button"
+                accessibilityLabel="Close prayer"
+                onPress={() => setSelectedTraditionalPrayer(null)}
+                hitSlop={10}
+              >
+                <Feather name="x" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: Platform.OS === "web" ? 58 : 24 }}>
+              <View style={{ width: 42, height: 3, borderRadius: 2, backgroundColor: colors.gold, marginBottom: 22 }} />
+              <Text style={{ fontSize: 18, color: colors.navy, lineHeight: 31, fontStyle: "italic" }}>
+                {selectedTraditionalPrayer.text}
+              </Text>
+            </ScrollView>
+          </SafeAreaView>
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }
