@@ -97,6 +97,20 @@ export const SendAnthropicMessageBody = zod.object({
 });
 
 /**
+ * @summary Send an image or video attachment and receive an AI response (SSE stream)
+ */
+export const SendAnthropicMediaMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendAnthropicMediaMessageBody = zod.object({
+  content: zod.string(),
+  model: zod.string().optional(),
+  systemPromptOverride: zod.string().optional(),
+  file: zod.instanceof(File),
+});
+
+/**
  * @summary Generate a prayer based on situation (SSE stream)
  */
 export const GeneratePrayerBody = zod.object({

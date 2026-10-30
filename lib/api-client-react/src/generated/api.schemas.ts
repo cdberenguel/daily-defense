@@ -35,6 +35,13 @@ export interface SendAnthropicMessageBody {
   systemPromptOverride?: string;
 }
 
+export interface SendAnthropicMediaMessageBody {
+  content: string;
+  model?: string;
+  systemPromptOverride?: string;
+  file: Blob;
+}
+
 export interface AnthropicConversationWithMessages {
   id: number;
   title: string;

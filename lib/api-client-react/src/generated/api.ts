@@ -26,6 +26,7 @@ import type {
   GenerateTopicBody,
   HealthStatus,
   ReviewSessionBody,
+  SendAnthropicMediaMessageBody,
   SendAnthropicMessageBody,
 } from "./api.schemas";
 
@@ -633,6 +634,106 @@ export const useSendAnthropicMessage = <
   TContext
 > => {
   return useMutation(getSendAnthropicMessageMutationOptions(options));
+};
+
+/**
+ * @summary Send an image or video attachment and receive an AI response (SSE stream)
+ */
+export const getSendAnthropicMediaMessageUrl = (id: number) => {
+  return `/api/anthropic/conversations/${id}/media-messages`;
+};
+
+export const sendAnthropicMediaMessage = async (
+  id: number,
+  sendAnthropicMediaMessageBody: SendAnthropicMediaMessageBody,
+  options?: RequestInit,
+): Promise<unknown> => {
+  const formData = new FormData();
+  formData.append(`content`, sendAnthropicMediaMessageBody.content);
+  if (sendAnthropicMediaMessageBody.model !== undefined) {
+    formData.append(`model`, sendAnthropicMediaMessageBody.model);
+  }
+  if (sendAnthropicMediaMessageBody.systemPromptOverride !== undefined) {
+    formData.append(
+      `systemPromptOverride`,
+      sendAnthropicMediaMessageBody.systemPromptOverride,
+    );
+  }
+  formData.append(`file`, sendAnthropicMediaMessageBody.file);
+
+  return customFetch<unknown>(getSendAnthropicMediaMessageUrl(id), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getSendAnthropicMediaMessageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendAnthropicMediaMessage>>,
+    TError,
+    { id: number; data: BodyType<SendAnthropicMediaMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendAnthropicMediaMessage>>,
+  TError,
+  { id: number; data: BodyType<SendAnthropicMediaMessageBody> },
+  TContext
+> => {
+  const mutationKey = ["sendAnthropicMediaMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendAnthropicMediaMessage>>,
+    { id: number; data: BodyType<SendAnthropicMediaMessageBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return sendAnthropicMediaMessage(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendAnthropicMediaMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendAnthropicMediaMessage>>
+>;
+export type SendAnthropicMediaMessageMutationBody =
+  BodyType<SendAnthropicMediaMessageBody>;
+export type SendAnthropicMediaMessageMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send an image or video attachment and receive an AI response (SSE stream)
+ */
+export const useSendAnthropicMediaMessage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendAnthropicMediaMessage>>,
+    TError,
+    { id: number; data: BodyType<SendAnthropicMediaMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendAnthropicMediaMessage>>,
+  TError,
+  { id: number; data: BodyType<SendAnthropicMediaMessageBody> },
+  TContext
+> => {
+  return useMutation(getSendAnthropicMediaMessageMutationOptions(options));
 };
 
 /**

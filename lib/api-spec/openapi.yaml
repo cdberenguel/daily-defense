@@ -141,6 +141,28 @@ paths:
           description: SSE stream of assistant response chunks
           content:
             text/event-stream: {}
+  /anthropic/conversations/{id}/media-messages:
+    post:
+      operationId: sendAnthropicMediaMessage
+      tags: [anthropic]
+      summary: Send an image or video attachment and receive an AI response (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SendAnthropicMediaMessageBody"
+      responses:
+        "200":
+          description: SSE stream of assistant response chunks
+          content:
+            text/event-stream: {}
   /ai/pray:
     post:
       operationId: generatePrayer
@@ -254,6 +276,21 @@ components:
           type: string
       required:
         - content
+    SendAnthropicMediaMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+        model:
+          type: string
+        systemPromptOverride:
+          type: string
+        file:
+          type: string
+          format: binary
+      required:
+        - content
+        - file
     AnthropicConversationWithMessages:
       type: object
       properties:
